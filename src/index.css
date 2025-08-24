@@ -32,3 +32,5 @@
 /* 兜底隐藏滚动条（Chromium/Firefox/旧版 Edge） */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
+/* 让按钮/图标不受窗口拖拽区域影响 */
+.app-no-drag { -webkit-app-region: no-drag; }

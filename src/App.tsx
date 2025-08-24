@@ -19,7 +19,6 @@ import {
   Package2,
 } from "lucide-react"
 
-// ---------------- types & helpers ----------------
 type RawImage = { name: string; data: Uint8Array }
 type LoadedImage = { name: string; img: HTMLImageElement; w: number; h: number }
 type Mode = "h" | "v" | "grid"
@@ -48,9 +47,7 @@ declare global {
 }
 
 const hasApi = Boolean(window.api)
-const toBlob = (u8: Uint8Array, type = "image/jpeg") =>
-  new Blob([u8], { type })
-
+const toBlob = (u8: Uint8Array, type = "image/jpeg") => new Blob([u8], { type })
 const extOf = (name: string) => {
   const i = name.lastIndexOf(".")
   return i >= 0 ? name.slice(i).toLowerCase() : ""
@@ -60,17 +57,12 @@ const stemOf = (name: string) => {
   return i >= 0 ? name.slice(0, i) : name
 }
 
-/** A1.jpg -> group "A"；B12_x.png -> "B"；没有前缀就用首字母 */
 function groupKeyFromName(name: string): string {
   const stem = stemOf(name)
-  // 取开头连续的英文字母作为组
   const m = /^[A-Za-z]+/.exec(stem)
   if (m && m[0]) return m[0].toUpperCase()
-  // 退化：用第一个字符的大写
   return (stem[0] || "X").toUpperCase()
 }
-
-/** A2 -> 2, A10 -> 10, 默认 0，用于组内排序 */
 function serialFromName(name: string): number {
   const stem = stemOf(name)
   const m = /(\d+)/.exec(stem)
@@ -88,41 +80,31 @@ async function rawToLoaded(arr: RawImage[]): Promise<LoadedImage[]> {
     URL.revokeObjectURL(url)
     return res
   }
-  const loaded = await Promise.all(arr.map(loadOne))
-  return loaded
+  return Promise.all(arr.map(loadOne))
 }
-
-/** 计算网格列数：尽量取接近正方形的分布 */
 const gridColsFor = (n: number) => Math.ceil(Math.sqrt(n))
 
-/** 把一组图片按模式合并成一张，返回 Blob(jpeg) */
 async function mergeImages(loaded: LoadedImage[], mode: Mode): Promise<Blob> {
   if (loaded.length === 1) {
-    // 单张直接回传
     const canvas = document.createElement("canvas")
     canvas.width = loaded[0].w
     canvas.height = loaded[0].h
     const ctx = canvas.getContext("2d")!
     ctx.drawImage(loaded[0].img, 0, 0)
-    return new Promise<Blob>((resolve) =>
-      canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.92)
-    )
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.92))
   }
 
   const canvas = document.createElement("canvas")
   const ctx = canvas.getContext("2d")!
 
   if (mode === "h" || mode === "v") {
-    // 横/纵：统一到同一高度或同一宽度再拼接
     if (mode === "h") {
       const targetH = Math.max(...loaded.map((x) => x.h))
-      // 计算等比缩放后的宽度
       const scaled = loaded.map((x) => {
-        const scale = targetH / x.h
-        return { ...x, dw: Math.round(x.w * scale), dh: targetH }
+        const s = targetH / x.h
+        return { ...x, dw: Math.round(x.w * s), dh: targetH }
       })
-      const totalW = scaled.reduce((s, x) => s + x.dw, 0)
-      canvas.width = totalW
+      canvas.width = scaled.reduce((s, x) => s + x.dw, 0)
       canvas.height = targetH
       let x0 = 0
       for (const it of scaled) {
@@ -132,12 +114,11 @@ async function mergeImages(loaded: LoadedImage[], mode: Mode): Promise<Blob> {
     } else {
       const targetW = Math.max(...loaded.map((x) => x.w))
       const scaled = loaded.map((x) => {
-        const scale = targetW / x.w
-        return { ...x, dw: targetW, dh: Math.round(x.h * scale) }
+        const s = targetW / x.w
+        return { ...x, dw: targetW, dh: Math.round(x.h * s) }
       })
-      const totalH = scaled.reduce((s, x) => s + x.dh, 0)
       canvas.width = targetW
-      canvas.height = totalH
+      canvas.height = scaled.reduce((s, x) => s + x.dh, 0)
       let y0 = 0
       for (const it of scaled) {
         ctx.drawImage(it.img, 0, y0, it.dw, it.dh)
@@ -145,10 +126,8 @@ async function mergeImages(loaded: LoadedImage[], mode: Mode): Promise<Blob> {
       }
     }
   } else {
-    // 网格：尽量均匀铺满
     const cols = gridColsFor(loaded.length)
     const rows = Math.ceil(loaded.length / cols)
-    // 以每格的最大宽高对齐
     const maxW = Math.max(...loaded.map((x) => x.w))
     const maxH = Math.max(...loaded.map((x) => x.h))
     canvas.width = cols * maxW
@@ -162,20 +141,11 @@ async function mergeImages(loaded: LoadedImage[], mode: Mode): Promise<Blob> {
     })
   }
 
-  return new Promise<Blob>((resolve) =>
-    canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.92)
-  )
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.92))
 }
 
-// ---------------- main component ----------------
-
 export default function App() {
-  // 工具切换（先保留占位，后续可以接入其他工具）
-  const [activeTool, setActiveTool] = useState<"merge" | "rename" | "compress">(
-    "merge"
-  )
-
-  // 选择与保存
+  const [activeTool, setActiveTool] = useState<"merge" | "rename" | "compress">("merge")
   const [raw, setRaw] = useState<RawImage[]>([])
   const [srcFolderName, setSrcFolderName] = useState<string>("")
   const [destDir, setDestDir] = useState<string>("")
@@ -196,7 +166,6 @@ export default function App() {
 
   const canStart = useMemo(() => raw.length >= 2, [raw])
 
-  // 选择：图片文件夹
   const onPickDir = async () => {
     if (!hasApi) {
       alert("此功能需要在安装版/绿色版中使用（浏览器不能选择文件夹）。")
@@ -211,15 +180,11 @@ export default function App() {
     }
     setRaw(list.items)
     setSrcFolderName(r.dir.split(/[\\/]/).pop() || "未命名")
-    setStatus(`已选择：${list.items.length} 张图片；源文件夹：${srcFolderName}`)
+    setStatus(`已选择：${list.items.length} 张图片；源文件夹：${r.dir}`)
   }
 
-  // 选择：若干图片
   const onPickFiles = async () => {
-    if (!hasApi) {
-      // 浏览器环境直接提示会下载
-      alert("浏览器模式：只能处理并下载合并结果，不能选择文件夹/保存到目录。")
-    }
+    if (!hasApi) alert("浏览器模式：只能下载合并结果，不能选择文件夹/保存到目录。")
     const r = hasApi ? await window.api!.pickImageFiles() : { canceled: true }
     if (r.canceled) return
     if (r.items && r.items.length) {
@@ -229,7 +194,6 @@ export default function App() {
     }
   }
 
-  // 选择保存位置
   const onPickSave = async () => {
     if (!hasApi) {
       setStatus("浏览器模式：拼接完成后会直接下载到本地。")
@@ -241,7 +205,6 @@ export default function App() {
     setStatus(`已选择保存位置：${r.path}`)
   }
 
-  // 分组
   function buildGroups(list: RawImage[]) {
     const map = new Map<string, RawImage[]>()
     for (const it of list) {
@@ -249,16 +212,13 @@ export default function App() {
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(it)
     }
-    // 组内排序（按数字）
     for (const [k, arr] of map) {
       arr.sort((a, b) => serialFromName(a.name) - serialFromName(b.name))
-      // 至少两张才保留
       if (arr.length < 2) map.delete(k)
     }
     return map
   }
 
-  // 合并
   const startMerge = async () => {
     if (!raw.length) return
     const groups = buildGroups(raw)
@@ -281,7 +241,6 @@ export default function App() {
       if (hasApi && destDir) {
         await window.api!.saveImageInDir(buf, destDir, filename, outSubdir)
       } else {
-        // 浏览器降级：直接触发下载
         const a = document.createElement("a")
         a.href = URL.createObjectURL(blob)
         a.download = filename
@@ -301,30 +260,42 @@ export default function App() {
     setStatus("等待开始拼接...")
   }
 
-  // ---------------- render ----------------
+  // === 动态标题与提示 ===
+  const toolMeta = {
+    merge: { icon: ImageIcon, label: "图片拼接", tip: tipText },
+    rename: { icon: Wrench, label: "批量重命名" },
+    compress: { icon: Package2, label: "图片压缩" },
+  } as const
+  const CurrentIcon = toolMeta[activeTool].icon
+  const currentLabel = toolMeta[activeTool].label
+  const currentTip = (toolMeta[activeTool] as any).tip as string | undefined
 
   return (
     <div className="w-full h-[100vh] overflow-hidden bg-slate-50">
-      {/* 顶部：标题与面包屑 */}
+      {/* 顶部 */}
       <div className="px-6 pt-6">
         <div className="flex items-center gap-2 text-slate-800">
           <AppWindow className="w-6 h-6" />
           <h1 className="text-2xl font-bold">工具合集</h1>
           <span className="text-slate-400">/</span>
-          <ImageIcon className="w-5 h-5 text-slate-700" />
-          <h2 className="text-xl font-semibold">图片拼接</h2>
+          <CurrentIcon className="w-5 h-5 text-slate-700" />
+          <h2 className="text-xl font-semibold">{currentLabel}</h2>
 
-          {/* 只在图片拼接功能显示的提示图标（原规则） */}
-          <Info
-            className="w-4 h-4 ml-2 text-slate-500 cursor-help"
-            title={tipText}
-          />
+        {/* 只有“图片拼接”显示提示按钮；并标记 no-drag，防止被标题栏拖拽吞掉鼠标事件 */}
+          {currentTip && (
+            <button
+              className="ml-2 rounded-full p-1 text-slate-500 hover:bg-slate-200 app-no-drag cursor-help"
+              title={currentTip}
+            >
+              <Info className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        {/* 工具切换（当前页高亮，其它占位） */}
+        {/* 工具切换 */}
         <div className="mt-5 flex flex-wrap gap-3">
           <Button
-            variant="default"
+            variant={activeTool === "merge" ? "default" : "secondary"}
             className="gap-2"
             onClick={() => setActiveTool("merge")}
           >
@@ -333,7 +304,7 @@ export default function App() {
           </Button>
 
           <Button
-            variant="secondary"
+            variant={activeTool === "rename" ? "default" : "secondary"}
             className="gap-2"
             onClick={() => setActiveTool("rename")}
           >
@@ -342,7 +313,7 @@ export default function App() {
           </Button>
 
           <Button
-            variant="secondary"
+            variant={activeTool === "compress" ? "default" : "secondary"}
             className="gap-2"
             onClick={() => setActiveTool("compress")}
           >
@@ -352,7 +323,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 内容区域 */}
+      {/* 内容 */}
       <div className="px-6 mt-6">
         {activeTool === "merge" && (
           <div className="flex flex-col gap-4">
@@ -377,10 +348,7 @@ export default function App() {
                 选择保存位置
               </Button>
 
-              <Select
-                value={mode}
-                onValueChange={(v) => setMode(v as Mode)}
-              >
+              <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="拼接方式" />
                 </SelectTrigger>
@@ -391,11 +359,7 @@ export default function App() {
                 </SelectContent>
               </Select>
 
-              <Button
-                className="gap-2"
-                onClick={startMerge}
-                disabled={!canStart}
-              >
+              <Button className="gap-2" onClick={startMerge} disabled={!canStart}>
                 <Rocket className="w-4 h-4" />
                 开始拼接
               </Button>
