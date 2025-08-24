@@ -29,3 +29,6 @@
   * { @apply border-border; }
   body { @apply bg-background text-foreground; }
 }
+/* 兜底隐藏滚动条（Chromium/Firefox/旧版 Edge） */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }

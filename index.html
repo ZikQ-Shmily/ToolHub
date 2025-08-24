@@ -2,8 +2,16 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>工具合集</title>
+    <style>
+      /* 根节点占满窗口，且不允许出现页面滚动条 */
+      html, body, #root { height: 100%; }
+      html, body { margin: 0; padding: 0; overflow: hidden; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
