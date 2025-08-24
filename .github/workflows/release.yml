@@ -1,12 +1,19 @@
 name: Build & Release
+
 permissions:
   contents: write
+
 on:
   push:
     branches: [ main ]
     tags:
       - 'v*.*.*'
   workflow_dispatch: {}
+
+# 可选：拉取国内镜像以提高稳定性
+# env:
+#   ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+#   ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
 
 jobs:
   build:
@@ -19,13 +26,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+
       - run: npm ci
       - run: npm run build
 
+      # --- platform builds ---
       - name: Build Windows
         if: runner.os == 'Windows'
         run: npx electron-builder --win nsis portable --publish never
@@ -38,6 +48,7 @@ jobs:
         if: runner.os == 'Linux'
         run: npx electron-builder --linux AppImage deb --publish never
 
+      # 只上传最终产物，**不** 上传 *-unpacked/**
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -48,7 +59,6 @@ jobs:
             release/*.zip
             release/*.AppImage
             release/*.deb
-            release/*-unpacked/**
           if-no-files-found: warn
 
   release:
@@ -60,9 +70,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      # 只把安装包上传到 Release，避免重复文件名导致的 404/更新失败
       - uses: softprops/action-gh-release@v2
         with:
           draft: true
-          files: artifacts/**/*
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.zip
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
