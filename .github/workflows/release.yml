@@ -68,6 +68,9 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
+      # 🔹 必须先检出代码，否则 package.json 不存在
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -77,7 +80,7 @@ jobs:
         id: package_version
         run: echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
 
-      # 删除该 Tag 的旧 Release 资产（如果有）
+      # 删除旧 Release 资产（如果有）
       - name: Delete existing assets in release (if any)
         uses: actions/github-script@v7
         with:
@@ -109,14 +112,14 @@ jobs:
               core.info(`No existing release for ${tag}, skipping cleanup.`);
             }
 
-      # 创建或更新 Release，并自动设置标题
+      # 创建或更新 Release，并正确设置标题
       - name: Create/Update Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           draft: false
           prerelease: false
           make_latest: true
-          name: ToolHub v${{ env.VERSION }}  # 自动同步版本号到标题
+          name: ToolHub v${{ env.VERSION }}
           generate_release_notes: true
           files: |
             artifacts/**/*.exe
