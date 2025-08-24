@@ -2,6 +2,11 @@
   "name": "tool-hub",
   "private": true,
   "version": "1.0.0",
+  "description": "常用工具合集（Electron + Vite + React）",
+  "author": {
+    "name": "ZikQ-Smily",
+    "email": "ZikQ-Smily@users.noreply.github.com"
+  },
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -50,6 +55,7 @@
       "target": ["AppImage", "deb"],
       "category": "Utility",
       "icon": "public/icon.png",
+      "maintainer": "ZikQ-Smily <ZikQ-Smily@users.noreply.github.com>",
       "artifactName": "${productName} ${version} ${os}.${ext}"
     }
   },
