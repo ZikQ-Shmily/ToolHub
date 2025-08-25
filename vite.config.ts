@@ -4,7 +4,8 @@ import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
   plugins: [react()],
-  base: './', // 适配 file://（绿色版）
+  // 适配 file://（绿色版）
+  base: './',
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
@@ -18,5 +19,26 @@ export default defineConfig({
   optimizeDeps: {
     entries: ['index.html'],
   },
-  build: { outDir: 'dist', assetsDir: 'assets', sourcemap: false },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    emptyOutDir: true,
+    target: 'es2020',          // 与 Electron 运行时匹配，减少转译负担
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,    // 去除 console
+        drop_debugger: true    // 去除 debugger
+      }
+    },
+    rollupOptions: {
+      output: {
+        // 将 node_modules 打到一个 vendor 包里，安装包压缩率更高
+        manualChunks(id) {
+          if (id.includes('node_modules')) return 'vendor'
+        }
+      }
+    }
+  }
 })
