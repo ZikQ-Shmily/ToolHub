@@ -25,12 +25,9 @@ export default defineConfig({
     sourcemap: false,
     emptyOutDir: true,
     target: 'es2020',          // 与 Electron 运行时匹配，减少转译负担
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,    // 去除 console
-        drop_debugger: true    // 去除 debugger
-      }
+    minify: true,
+    esbuild: {
+      drop: ['console', 'debugger'],
     },
     rollupOptions: {
       output: {
