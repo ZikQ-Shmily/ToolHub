@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.1",
   "description": "常用工具合集（Electron + Vite + React）",
+  "license": "GPL-3.0",
   "author": {
     "name": "ZikQ-Smily",
     "email": "ZikQ-Smily@users.noreply.github.com"
