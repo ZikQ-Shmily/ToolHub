@@ -35,7 +35,6 @@
       "dist/**/*",
       "electron/**/*",
       "package.json",
-
       "!**/*.map",
       "!**/*.ts",
       "!**/*.tsx",
@@ -47,7 +46,6 @@
       "!**/.git/**",
       "!**/.github/**",
       "!**/*.log",
-
       "!**/node_modules/**"
     ],
 
@@ -58,7 +56,8 @@
       "target": [
         { "target": "nsis", "arch": ["x64", "ia32", "arm64"] },
         { "target": "portable", "arch": ["x64", "ia32", "arm64"] }
-      ]
+      ],
+      "artifactName": "ToolHub_${version}_win_${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -67,10 +66,10 @@
       "createDesktopShortcut": false,
       "createStartMenuShortcut": false,
       "perMachine": false,
-      "artifactName": "ToolHub_${version}_${arch}-setup.${ext}"
+      "artifactName": "ToolHub_${version}_win_${arch}-setup.${ext}"
     },
     "portable": {
-      "artifactName": "ToolHub_${version}_${arch}.exe"
+      "artifactName": "ToolHub_${version}_win_${arch}.exe"
     },
 
     "mac": {
@@ -81,7 +80,7 @@
         { "target": "zip", "arch": ["x64", "arm64"] }
       ],
       "identity": null,
-      "artifactName": "ToolHub_${version}_${arch}.${ext}"
+      "artifactName": "ToolHub_${version}_mac_${arch}.${ext}"
     },
 
     "linux": {
@@ -92,11 +91,10 @@
         { "target": "deb", "arch": ["x64", "arm64"] }
       ],
       "maintainer": "ZikQ-Smily <ZikQ-Smily@users.noreply.github.com>",
-      "artifactName": "ToolHub_${version}_${arch}.${ext}"
+      "artifactName": "ToolHub_${version}_linux_${arch}.${ext}"
     }
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
