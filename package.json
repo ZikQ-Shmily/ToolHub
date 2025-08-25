@@ -25,12 +25,32 @@
     "appId": "cn.sajuna.toolhub",
     "productName": "工具合集",
     "directories": { "output": "release" },
+
+    "compression": "maximum",
+    "asar": true,
+    "asarUnpack": [],
+    "electronLanguages": ["zh-CN", "en-US"],
+
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "package.json"
+      "package.json",
+
+      "!**/*.map",
+      "!**/*.ts",
+      "!**/*.tsx",
+      "!**/*.md",
+      "!**/__tests__/**",
+      "!**/test/**",
+      "!**/*.test.*",
+      "!**/.DS_Store",
+      "!**/.git/**",
+      "!**/.github/**",
+      "!**/*.log",
+
+      "!**/node_modules/**"
     ],
-    "asar": true,
+
     "extraMetadata": { "main": "electron/main.cjs" },
 
     "win": {
@@ -60,7 +80,7 @@
         { "target": "dmg", "arch": ["x64", "arm64"] },
         { "target": "zip", "arch": ["x64", "arm64"] }
       ],
-      "identity": null,   
+      "identity": null,
       "artifactName": "ToolHub_${version}_${arch}.${ext}"
     },
 
@@ -76,9 +96,6 @@
     }
   },
   "dependencies": {
-    "lucide-react": "^0.541.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@radix-ui/react-select": "^2.0.0",
@@ -93,7 +110,10 @@
     "cross-env": "^7.0.3",
     "electron": "^28.3.3",
     "electron-builder": "^24.13.3",
+    "lucide-react": "^0.541.0",
     "postcss": "^8.5.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^3.4.3",
     "tailwindcss-animate": "^1.0.7",
