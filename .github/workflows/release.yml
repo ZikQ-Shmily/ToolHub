@@ -18,6 +18,10 @@ jobs:
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      ELECTRON_BUILDER_DISABLE_NOTARIZE: "true"
+    
     strategy:
       fail-fast: false
       matrix:
