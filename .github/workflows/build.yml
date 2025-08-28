@@ -1,4 +1,4 @@
-name: Build & Release
+name: Build (validate all platforms)
 
 on:
   push:
@@ -10,6 +10,10 @@ jobs:
   build:
     name: Build ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      ELECTRON_BUILDER_DISABLE_NOTARIZE: "true"
+
     strategy:
       fail-fast: false
       matrix:
@@ -19,43 +23,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
+      - run: npm run build
 
-      - name: Build Vite project
-        run: npm run build
+      # Windows
+      - name: Build Windows
+        if: matrix.os == 'windows-latest'
+        run: npx electron-builder --win nsis portable --${{ matrix.arch }} --publish never
 
-      - name: Build Electron app
-        run: |
-          npx electron-builder --${{ matrix.os == 'windows-latest' && 'win' || matrix.os == 'macos-latest' && 'mac' || 'linux' }} --${{ matrix.arch }} --publish never
+      # macOS
+      - name: Build macOS
+        if: matrix.os == 'macos-latest'
+        run: npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never
+
+      # Linux
+      - name: Build Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: npx electron-builder --linux AppImage deb --${{ matrix.arch }} --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ToolHub-${{ matrix.os }}-${{ matrix.arch }}
+          name: toolhub-${{ matrix.os }}-${{ matrix.arch }}
           path: release/
-
-  release:
-    name: Publish to GitHub Releases
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: release/**
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if-no-files-found: warn
