@@ -140,3 +140,45 @@ ipcMain.handle('pick-image-files', async ()=> {
   const srcFolderName = parents.size === 1 ? path.basename([...parents][0]) : '手动选择'
   return { canceled: false, items, srcFolderName }
 })
+
+// ====== 选择任意文件（多选）======
+ipcMain.handle('pick-any-files', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections']
+  })
+  if (canceled || !filePaths.length) return { canceled: true }
+  const files = filePaths.map(p => ({
+    path: p,
+    name: path.basename(p),
+    dir: path.dirname(p),
+    ext: path.extname(p)
+  }))
+  return { canceled: false, files }
+})
+
+// ====== 批量重命名 ======
+ipcMain.handle('rename-files', async (_evt, items) => {
+  // items: [{ from, to, autoResolve }]
+  const results = []
+  for (const it of items) {
+    let target = it.to
+    // 自动处理重名冲突：追加 (1)/(2)/...
+    if (it.autoResolve) {
+      if (fs.existsSync(target)) {
+        const parsed = path.parse(target)
+        let i = 1
+        let cand = target
+        while (fs.existsSync(cand)) {
+          cand = path.join(parsed.dir, `${parsed.name} (${i})${parsed.ext}`)
+          i++
+        }
+        target = cand
+      }
+    }
+    if (it.from !== target) {
+      fs.renameSync(it.from, target)
+    }
+    results.push({ from: it.from, to: target })
+  }
+  return { results }
+})
