@@ -1,7 +1,7 @@
 {
   "name": "tool-hub",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "常用工具合集（Electron + Vite + React）",
   "license": "GPL-3.0",
   "author": {
