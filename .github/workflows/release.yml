@@ -37,7 +37,7 @@ jobs:
           - os: ubuntu-latest
             arch: arm64
 
-          # macOS（两个都用 latest，但强制在 Rosetta/x64 下打包以稳定生成 DMG）
+          # macOS（latest 上用 Rosetta/x64 进程来稳定打 DMG）
           - os: macos-latest
             arch: x64
           - os: macos-latest
@@ -46,8 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # -------- Node 环境 ----------
-      # macOS：装 Rosetta + 安装 x64 Node（在 Rosetta 下运行）
+      # macOS：装 Rosetta + 用 x64 Node（electron-builder 在 x64 进程下走 HFS+，避免 APFS hdiutil 问题）
       - name: Install Rosetta (Apple Silicon)
         if: startsWith(matrix.os, 'macos')
         run: |
@@ -65,7 +64,6 @@ jobs:
           architecture: x64
           cache: npm
 
-      # 其它平台：正常装 Node
       - name: Setup Node (default)
         if: "!startsWith(matrix.os, 'macos')"
         uses: actions/setup-node@v4
@@ -73,17 +71,15 @@ jobs:
           node-version: 20
           cache: npm
 
-      # -------- 安装&构建 ----------
       - run: npm ci
       - run: npm run build
 
-      # -------- 各平台打包 ----------
       # Windows
       - name: Build Windows
         if: matrix.os == 'windows-latest'
         run: npx electron-builder --win nsis portable --${{ matrix.arch }} --publish never
 
-      # macOS（必须有 DMG）：在 x64 进程下执行 electron-builder；失败重试 3 次（不做 ZIP 降级）
+      # macOS（必须产出 DMG；重试 3 次，不做 ZIP 降级）
       - name: Build macOS (DMG required; retry up to 3x)
         if: startsWith(matrix.os, 'macos')
         shell: bash
@@ -117,8 +113,7 @@ jobs:
             release/*.zip
             release/*.AppImage
             release/*.deb
-            release/*setup*.exe
-            release/*_win_*.exe
+            release/ToolHub_*_win_*.exe   # ✅ 一个模式同时包含安装版和便携版，避免重复
           if-no-files-found: warn
           retention-days: 7
 
@@ -131,12 +126,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 下载所有构建产物
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      # 兜底清理非安装包文件（即使误上传也会被删）
+      # 再次兜底清理非安装包文件
       - name: Prune unwanted files
         run: |
           find artifacts -type f \
@@ -144,11 +138,10 @@ jobs:
             ! -name '*.zip' \
             ! -name '*.AppImage' \
             ! -name '*.deb' \
-            ! -name '*setup*.exe' \
-            ! -name '*_win_*.exe' \
+            ! -name 'ToolHub_*_win_*.exe' \
             -delete
 
-      # 删除旧 release/tag（若存在），避免 update-asset 404
+      # 可选：删除旧 release/tag（若你要复用同名 tag）
       - name: Delete old release (if exists)
         uses: dev-drprasad/delete-tag-and-release@v1.0
         with:
@@ -157,7 +150,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
-      # 创建 Release 并上传安装包
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
@@ -166,14 +158,12 @@ jobs:
           make_latest: true
           name: ToolHub ${{ github.ref_name }}
           generate_release_notes: true
-          overwrite: false
           fail_on_unmatched_files: false
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.zip
             artifacts/**/*.AppImage
             artifacts/**/*.deb
-            artifacts/**/*setup*.exe
-            artifacts/**/*_win_*.exe
+            artifacts/**/ToolHub_*_win_*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
