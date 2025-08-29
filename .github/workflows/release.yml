@@ -37,8 +37,8 @@ jobs:
           - os: ubuntu-latest
             arch: arm64
 
-          # macOS
-          - os: macos-13
+          # macOS（两个都用 latest，但强制在 Rosetta/x64 下打包以稳定生成 DMG）
+          - os: macos-latest
             arch: x64
           - os: macos-latest
             arch: arm64
@@ -46,28 +46,68 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      # -------- Node 环境 ----------
+      # macOS：装 Rosetta + 安装 x64 Node（在 Rosetta 下运行）
+      - name: Install Rosetta (Apple Silicon)
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          if /usr/bin/pgrep oahd >/dev/null; then
+            echo "Rosetta already installed"
+          else
+            /usr/sbin/softwareupdate --install-rosetta --agree-to-license
+          fi
+
+      - name: Setup Node (x64 via Rosetta on macOS)
+        if: startsWith(matrix.os, 'macos')
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          architecture: x64
+          cache: npm
+
+      # 其它平台：正常装 Node
+      - name: Setup Node (default)
+        if: "!startsWith(matrix.os, 'macos')"
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
+      # -------- 安装&构建 ----------
       - run: npm ci
       - run: npm run build
 
-      # 打包
+      # -------- 各平台打包 ----------
+      # Windows
       - name: Build Windows
         if: matrix.os == 'windows-latest'
         run: npx electron-builder --win nsis portable --${{ matrix.arch }} --publish never
 
-      - name: Build macOS
+      # macOS（必须有 DMG）：在 x64 进程下执行 electron-builder；失败重试 3 次（不做 ZIP 降级）
+      - name: Build macOS (DMG required; retry up to 3x)
         if: startsWith(matrix.os, 'macos')
-        run: npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never
+        shell: bash
+        run: |
+          set -e
+          arch -x86_64 node -v
+          for i in 1 2 3; do
+            echo "mac DMG build attempt $i/3 for ${{ matrix.arch }} (x86_64 process via Rosetta)"
+            if arch -x86_64 npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never; then
+              echo "mac DMG build succeeded"
+              exit 0
+            fi
+            echo "mac DMG build failed, retrying in 15s..."
+            sleep 15
+          done
+          echo "mac DMG build failed after 3 attempts"
+          exit 1
 
+      # Linux
       - name: Build Linux
         if: matrix.os == 'ubuntu-latest'
         run: npx electron-builder --linux AppImage deb --${{ matrix.arch }} --publish never
 
-      # ✅ 只上传顶层安装包；同时包含 Windows 安装版 + 便携版
+      # 只上传 release 顶层安装包（避免把 unpacked 杂项带上）
       - name: Upload artifacts (top-level installers only)
         uses: actions/upload-artifact@v4
         with:
@@ -91,11 +131,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 下载所有构建产物
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      # ✅ 再次兜底清理非安装包文件
+      # 兜底清理非安装包文件（即使误上传也会被删）
       - name: Prune unwanted files
         run: |
           find artifacts -type f \
@@ -107,7 +148,7 @@ jobs:
             ! -name '*_win_*.exe' \
             -delete
 
-      # 删除旧 release/tag（若存在）
+      # 删除旧 release/tag（若存在），避免 update-asset 404
       - name: Delete old release (if exists)
         uses: dev-drprasad/delete-tag-and-release@v1.0
         with:
@@ -116,7 +157,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
-      # 创建 Release 并上传
+      # 创建 Release 并上传安装包
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
