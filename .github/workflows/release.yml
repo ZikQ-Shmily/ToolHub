@@ -103,7 +103,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: npx electron-builder --linux AppImage deb --${{ matrix.arch }} --publish never
 
-      # 只上传 release 顶层安装包（避免把 unpacked 杂项带上）
+      # 只上传 release 顶层安装包（放宽为所有 .exe，显式排除 default/elevate）
       - name: Upload artifacts (top-level installers only)
         uses: actions/upload-artifact@v4
         with:
@@ -113,7 +113,9 @@ jobs:
             release/*.zip
             release/*.AppImage
             release/*.deb
-            release/ToolHub_*_win_*.exe   # ✅ 一个模式同时包含安装版和便携版，避免重复
+            release/*.exe
+            !release/default.exe
+            !release/elevate.exe
           if-no-files-found: warn
           retention-days: 7
 
@@ -130,25 +132,19 @@ jobs:
         with:
           path: artifacts
 
-      # 再次兜底清理非安装包文件
+      # 再次兜底清理（允许所有 .exe，但删掉 default/elevate）
       - name: Prune unwanted files
+        shell: bash
         run: |
           find artifacts -type f \
             ! -name '*.dmg' \
             ! -name '*.zip' \
             ! -name '*.AppImage' \
             ! -name '*.deb' \
-            ! -name 'ToolHub_*_win_*.exe' \
+            ! -name '*.exe' \
             -delete
-
-      # 可选：删除旧 release/tag（若你要复用同名 tag）
-      - name: Delete old release (if exists)
-        uses: dev-drprasad/delete-tag-and-release@v1.0
-        with:
-          tag_name: ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
+          # 去掉常见无关 EXE
+          find artifacts -type f \( -name 'default.exe' -o -name 'elevate.exe' \) -delete
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
@@ -164,6 +160,6 @@ jobs:
             artifacts/**/*.zip
             artifacts/**/*.AppImage
             artifacts/**/*.deb
-            artifacts/**/ToolHub_*_win_*.exe
+            artifacts/**/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
